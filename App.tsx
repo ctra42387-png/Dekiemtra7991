@@ -2,19 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import ExamForm from './components/ExamForm.tsx';
 import ResultDisplay from './components/ResultDisplay.tsx';
-import SavedExamsList from './components/SavedExamsList.tsx';
+import SavedConfigsList from './components/SavedConfigsList.tsx';
 import MatrixSample from './components/MatrixSample.tsx';
 import AIAssistant from './components/AIAssistant.tsx';
-import Guide from './components/Guide.tsx'; // Import the new Guide component
-import { ExamConfig, GeneratedExamData, GenerationState, SavedExam, ExamType, QuestionFormat } from './types.ts';
+import Guide from './components/Guide.tsx';
+import { ExamConfig, GeneratedExamData, GenerationState, SavedExam, SavedConfig, ExamType, QuestionFormat } from './types.ts';
 import { generateExamContent } from './services/geminiService.ts';
-import { getSavedExams, deleteExam } from './services/storageService.ts';
-import { BookOpen, History, PlusCircle, Sparkles, FileSpreadsheet, BotMessageSquare, ChevronDown } from 'lucide-react';
+import { getSavedConfigs, saveConfig, deleteConfig, clearAllConfigs } from './services/storageService.ts';
+import { BookOpen, PlusCircle, Sparkles, FileSpreadsheet, BotMessageSquare, ChevronDown, Layout } from 'lucide-react';
 
 const INITIAL_CONFIG: ExamConfig = {
-  subject: 'Toán học',
-  grade: '6',
-  textbook: ['Kết nối tri thức với cuộc sống'],
+  subject: '',
+  grade: '',
+  textbook: [],
   scopeType: 'chapter',
   examType: ExamType.MID_TERM,
   duration: 60,
@@ -33,15 +33,15 @@ const App: React.FC = () => {
   });
   const [formConfig, setFormConfig] = useState<ExamConfig>(INITIAL_CONFIG);
   const [currentConfigForResults, setCurrentConfigForResults] = useState<ExamConfig | null>(null);
-  const [view, setView] = useState<'form' | 'results' | 'history'>('form');
-  const [savedExams, setSavedExams] = useState<SavedExam[]>([]);
+  const [view, setView] = useState<'form' | 'results' | 'templates'>('form');
+  const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
   const [showSampleMatrix, setShowSampleMatrix] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [showGuide, setShowGuide] = useState(false); // State for the guide modal
 
   useEffect(() => {
-    if (view === 'history') {
-      setSavedExams(getSavedExams());
+    if (view === 'templates') {
+      setSavedConfigs(getSavedConfigs());
     }
   }, [view]);
 
@@ -68,15 +68,25 @@ const App: React.FC = () => {
     }
   };
 
-  const handleViewSavedExam = (exam: SavedExam) => {
-    setState({ isLoading: false, error: null, data: exam.data });
-    setCurrentConfigForResults(exam.config);
-    setView('results');
+  const handleSaveConfig = (name: string) => {
+    saveConfig(formConfig, name);
+    setSavedConfigs(getSavedConfigs());
   };
 
-  const handleDeleteSavedExam = (id: string) => {
-    deleteExam(id);
-    setSavedExams(getSavedExams());
+  const handleSelectConfig = (savedConfig: SavedConfig) => {
+    setFormConfig(savedConfig.config);
+    setView('form');
+  };
+
+  const handleDeleteConfig = (id: string) => {
+    deleteConfig(id);
+    const updatedConfigs = getSavedConfigs();
+    setSavedConfigs([...updatedConfigs]);
+  };
+
+  const handleClearAllConfigs = () => {
+    clearAllConfigs();
+    setSavedConfigs([]);
   };
 
   const reset = () => {
@@ -130,6 +140,7 @@ const App: React.FC = () => {
             </div>
             <ExamForm 
               onSubmit={handleCreateExam} 
+              onSaveConfig={handleSaveConfig}
               isLoading={state.isLoading}
               config={formConfig}
               setConfig={setFormConfig} 
@@ -148,12 +159,13 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {view === 'history' && (
+        {view === 'templates' && (
           <div className="animate-in fade-in duration-500">
-            <SavedExamsList 
-              exams={savedExams} 
-              onView={handleViewSavedExam} 
-              onDelete={handleDeleteSavedExam} 
+            <SavedConfigsList 
+              configs={savedConfigs} 
+              onSelect={handleSelectConfig} 
+              onDelete={handleDeleteConfig} 
+              onClearAll={handleClearAllConfigs}
               onBack={() => setView('form')}
             />
           </div>
@@ -176,8 +188,8 @@ const App: React.FC = () => {
                 <PlusCircle size={16}/> TẠO MỚI
               </button>
               <div className="w-px h-4 bg-gray-200"></div>
-              <button onClick={() => setView('history')} className={`flex items-center gap-2 font-bold text-xs transition-colors ${view === 'history' ? 'text-blue-700' : 'text-gray-400 hover:text-blue-600'}`}>
-                <History size={16}/> LỊCH SỬ
+              <button onClick={() => setView('templates')} className={`flex items-center gap-2 font-bold text-xs transition-colors ${view === 'templates' ? 'text-blue-700' : 'text-gray-400 hover:text-blue-600'}`}>
+                <Layout size={16}/> MẪU LƯU
               </button>
               <div className="w-px h-4 bg-gray-200"></div>
               <button onClick={() => setShowGuide(true)} className="flex items-center gap-2 font-bold text-xs text-gray-400 hover:text-blue-600 transition-colors">

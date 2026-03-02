@@ -42,6 +42,17 @@ export const getAIAssistantResponse = async (question: string, context: ExamConf
         2. Đối với công thức hóa học, BẮT BUỘC sử dụng $\\ce{...}$ (ví dụ: $\\ce{H2O}$, $\\ce{CaCO3}$).
         3. Tuyệt đối không dùng ký tự unicode cho chỉ số dưới/trên.
         
+        **HƯỚNG DẪN VỀ MỨC ĐỘ NHẬN THỨC (CÔNG VĂN 7991):**
+        Khi giáo viên yêu cầu tạo câu hỏi hoặc tư vấn về đề thi, bạn phải tuân thủ và phân biệt rõ 3 mức độ:
+        1. **Nhận biết (Awareness):** Nhận ra, nhớ lại các khái niệm, định nghĩa, số liệu. Câu hỏi thường là: "Cái gì?", "Ở đâu?", "Khi nào?".
+        2. **Thông hiểu (Understanding):** Diễn giải, phân biệt, so sánh, tóm tắt kiến thức. Câu hỏi thường là: "Tại sao?", "Như thế nào?", "Phân biệt...".
+        3. **Vận dụng (Application):** Áp dụng kiến thức đã học vào các tình huống tương tự hoặc bài toán cụ thể.
+        
+        Bạn có thể giúp giáo viên:
+        - Tạo câu hỏi mới theo mức độ cụ thể.
+        - Chỉnh sửa câu hỏi hiện có để tăng/giảm mức độ nhận thức.
+        - Tư vấn phân bổ tỉ lệ điểm giữa các mức độ sao cho phù hợp với mục tiêu kiểm tra.
+        
         Luôn trả lời bằng tiếng Việt.
     `;
 

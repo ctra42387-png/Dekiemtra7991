@@ -74,6 +74,13 @@ export interface SavedExam {
   data: GeneratedExamData;
 }
 
+export interface SavedConfig {
+  id: string;
+  name: string;
+  savedAt: string;
+  config: ExamConfig;
+}
+
 // FIX: Add CurriculumLesson and CurriculumChapter interfaces to be used across the application.
 export interface CurriculumLesson {
   name: string;

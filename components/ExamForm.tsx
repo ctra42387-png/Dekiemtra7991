@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as mammoth from 'mammoth';
 import { ExamConfig, ExamType, QuestionCounts, LevelDistribution, ScopeItem, QuestionFormat, InputMode, CurriculumChapter, CurriculumLesson } from '../types.ts';
 import { CURRICULUM_DATA } from '../data/curriculum.ts';
-import { FileText, CheckCircle, PieChart, Book, Plus, Trash2, Calculator, CalendarCheck, Save, RotateCcw, Upload, FileUp, AlertCircle, Sparkles, PlusCircle, LayoutGrid, ListChecks, Percent, ChevronDown, GripVertical, Share2, Lightbulb, Send, Compass, Scale, PencilRuler, Loader2 } from 'lucide-react';
+import { DEFAULT_TEMPLATES, DefaultTemplate } from '../data/defaultTemplates.ts';
+import { FileText, CheckCircle, PieChart, Book, Plus, Trash2, Calculator, CalendarCheck, Save, RotateCcw, Upload, FileUp, AlertCircle, Sparkles, PlusCircle, LayoutGrid, ListChecks, Percent, ChevronDown, GripVertical, Share2, Lightbulb, Send, Compass, Scale, PencilRuler, Loader2, Layout, BookOpenCheck } from 'lucide-react';
 
 interface Props {
   onSubmit: (config: ExamConfig) => void;
+  onSaveConfig: (name: string) => void;
   isLoading: boolean;
   config: ExamConfig;
   setConfig: React.Dispatch<React.SetStateAction<ExamConfig>>;
@@ -27,9 +29,9 @@ const TEXTBOOKS = [
 const STORAGE_KEY_DEFAULT_CONFIG = 'exam_default_config';
 
 const INITIAL_CONFIG: ExamConfig = {
-  subject: 'Toán học',
-  grade: '6',
-  textbook: ['Kết nối tri thức với cuộc sống'],
+  subject: '',
+  grade: '',
+  textbook: [],
   scopeType: 'chapter',
   examType: ExamType.MID_TERM,
   duration: 60,
@@ -76,7 +78,7 @@ type UploadStatus = {
   message: string;
 };
 
-const ExamForm: React.FC<Props> = ({ onSubmit, isLoading, config, setConfig }) => {
+const ExamForm: React.FC<Props> = ({ onSubmit, onSaveConfig, isLoading, config, setConfig }) => {
   const [totalPercent, setTotalPercent] = useState(100);
   const [totalPeriods, setTotalPeriods] = useState(0);
   const [isCustomSubject, setIsCustomSubject] = useState(false);
@@ -85,6 +87,18 @@ const ExamForm: React.FC<Props> = ({ onSubmit, isLoading, config, setConfig }) =
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ status: 'idle', message: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [showDefaultTemplates, setShowDefaultTemplates] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDefaultTemplates(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const savedDefault = localStorage.getItem(STORAGE_KEY_DEFAULT_CONFIG);
@@ -293,6 +307,24 @@ const ExamForm: React.FC<Props> = ({ onSubmit, isLoading, config, setConfig }) =
     setTimeout(() => setSaveStatus('idle'), 2000);
   };
 
+  const handleSaveAsTemplate = () => {
+    const name = window.prompt("Nhập tên cho mẫu thiết lập này:", `${config.subject} - Lớp ${config.grade}`);
+    if (name && name.trim()) {
+      onSaveConfig(name.trim());
+      alert("Đã lưu mẫu thiết lập thành công!");
+    }
+  };
+
+  const handleApplyDefaultTemplate = (template: DefaultTemplate) => {
+    setConfig(prev => ({
+      ...prev,
+      ...template.config,
+      // Ensure we don't lose scope items if template doesn't provide them
+      scopeItems: template.config.scopeItems || prev.scopeItems
+    }));
+    setShowDefaultTemplates(false);
+  };
+
   const handleResetToInitial = () => {
     if (window.confirm("Bạn có muốn xóa cấu hình mặc định và quay về thiết lập ban đầu không?")) {
       localStorage.removeItem(STORAGE_KEY_DEFAULT_CONFIG);
@@ -336,6 +368,18 @@ const ExamForm: React.FC<Props> = ({ onSubmit, isLoading, config, setConfig }) =
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!config.subject) {
+      alert("Vui lòng chọn môn học.");
+      return;
+    }
+    if (!config.grade) {
+      alert("Vui lòng chọn lớp.");
+      return;
+    }
+    if (config.textbook.length === 0) {
+      alert("Vui lòng chọn ít nhất một bộ sách.");
+      return;
+    }
     if (config.inputMode === 'manual' && totalPercent !== 100) {
       alert(`Tổng tỉ lệ mức độ nhận thức phải bằng 100%. Hiện tại: ${totalPercent}%`);
       return;
@@ -367,6 +411,44 @@ const ExamForm: React.FC<Props> = ({ onSubmit, isLoading, config, setConfig }) =
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div className="relative" ref={dropdownRef}>
+            <button 
+              type="button" 
+              onClick={() => setShowDefaultTemplates(!showDefaultTemplates)}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all duration-300"
+            >
+              <BookOpenCheck size={14} />
+              <span className="hidden sm:inline">Mẫu chuẩn</span>
+              <ChevronDown size={12} className={`transition-transform duration-300 ${showDefaultTemplates ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showDefaultTemplates && (
+              <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 py-3 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="px-4 pb-2 mb-2 border-b border-gray-50">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Chọn mẫu chuẩn 7991</p>
+                </div>
+                <div className="max-h-64 overflow-y-auto px-2">
+                  {DEFAULT_TEMPLATES.map(template => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => handleApplyDefaultTemplate(template)}
+                      className="w-full text-left p-3 rounded-xl hover:bg-blue-50 transition-colors group"
+                    >
+                      <p className="text-sm font-bold text-gray-800 group-hover:text-blue-700">{template.name}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">{template.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button type="button" onClick={handleSaveAsTemplate}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-all duration-300">
+            <Layout size={14} />
+            <span className="hidden sm:inline">Lưu thành mẫu</span>
+          </button>
           <button type="button" onClick={handleSaveAsDefault}
             className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl border transition-all duration-300 ${saveStatus === 'saved' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'}`}>
             {saveStatus === 'saved' ? <CheckCircle size={14} className="text-green-600" /> : <Save size={14} />}
@@ -396,6 +478,7 @@ const ExamForm: React.FC<Props> = ({ onSubmit, isLoading, config, setConfig }) =
             {!isCustomSubject ? (
               <select className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none bg-gray-50/50 transition-all hover:bg-white font-bold text-sm appearance-none cursor-pointer"
                 value={config.subject} onChange={(e) => e.target.value === 'other' ? setIsCustomSubject(true) : handleChange('subject', e.target.value)}>
+                <option value="" disabled hidden>-- Chọn môn học --</option>
                 {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
                 <option value="other">-- Nhập môn khác --</option>
               </select>
@@ -412,6 +495,7 @@ const ExamForm: React.FC<Props> = ({ onSubmit, isLoading, config, setConfig }) =
             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Lớp / Khối</label>
             <select className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none bg-gray-50/50 hover:bg-white transition-all font-bold text-sm appearance-none cursor-pointer"
               value={config.grade} onChange={(e) => handleChange('grade', e.target.value)}>
+              <option value="" disabled hidden>-- Chọn lớp --</option>
               {[6, 7, 8, 9, 10, 11, 12].map(g => <option key={g} value={g}>Lớp {g}</option>)}
             </select>
           </div>

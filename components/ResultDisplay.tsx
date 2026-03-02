@@ -6,8 +6,7 @@ import rehypeRaw from 'rehype-raw';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { GeneratedExamData, ExamConfig } from '../types.ts';
-import { Printer, ChevronLeft, FileSpreadsheet, ListChecks, FileText, CheckSquare, Save, FileType, Check, Info, ClipboardCopy, FileDown, Loader2, RefreshCw } from 'lucide-react';
-import { saveExam } from '../services/storageService.ts';
+import { Printer, ChevronLeft, FileSpreadsheet, ListChecks, FileText, CheckSquare, FileType, Check, Info, ClipboardCopy, FileDown, Loader2, RefreshCw } from 'lucide-react';
 import MatrixSample from './MatrixSample.tsx';
 
 interface Props {
@@ -20,7 +19,6 @@ interface Props {
 
 const ResultDisplay: React.FC<Props> = ({ data, config, onBack, onRegenerate, isRegenerating }) => {
   const [activeTab, setActiveTab] = useState<'matrix' | 'spec' | 'exam' | 'answers'>('matrix');
-  const [isSaved, setIsSaved] = useState(false);
   const [showSample, setShowSample] = useState(false);
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -280,10 +278,6 @@ const ResultDisplay: React.FC<Props> = ({ data, config, onBack, onRegenerate, is
           </button>
           <button onClick={() => window.print()} className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-800 text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-black">
             <Printer size={18} /> <span className="hidden sm:inline">In ngay</span>
-          </button>
-          <button onClick={() => { saveExam(config, data, `Hồ sơ ${config.subject}`); setIsSaved(true); }} 
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition ${isSaved ? 'bg-green-100 text-green-700' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
-            {isSaved ? <Check size={18} /> : <Save size={18} />} <span className="hidden sm:inline">{isSaved ? 'Đã lưu' : 'Lưu trữ'}</span>
           </button>
         </div>
       </div>
