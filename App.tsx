@@ -2,14 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import ExamForm from './components/ExamForm.tsx';
 import ResultDisplay from './components/ResultDisplay.tsx';
+import SavedExamsList from './components/SavedExamsList.tsx';
 import SavedConfigsList from './components/SavedConfigsList.tsx';
 import MatrixSample from './components/MatrixSample.tsx';
 import AIAssistant from './components/AIAssistant.tsx';
 import Guide from './components/Guide.tsx';
 import { ExamConfig, GeneratedExamData, GenerationState, SavedExam, SavedConfig, ExamType, QuestionFormat } from './types.ts';
 import { generateExamContent } from './services/geminiService.ts';
-import { getSavedConfigs, saveConfig, deleteConfig, clearAllConfigs } from './services/storageService.ts';
-import { BookOpen, PlusCircle, Sparkles, FileSpreadsheet, BotMessageSquare, ChevronDown, Layout } from 'lucide-react';
+import { getSavedExams, deleteExam, getSavedConfigs, saveConfig, deleteConfig, clearAllExams, clearAllConfigs } from './services/storageService.ts';
+import { BookOpen, History as HistoryIcon, PlusCircle, Sparkles, FileSpreadsheet, BotMessageSquare, ChevronDown, Layout } from 'lucide-react';
 
 const INITIAL_CONFIG: ExamConfig = {
   subject: '',
@@ -33,21 +34,32 @@ const App: React.FC = () => {
   });
   const [formConfig, setFormConfig] = useState<ExamConfig>(INITIAL_CONFIG);
   const [currentConfigForResults, setCurrentConfigForResults] = useState<ExamConfig | null>(null);
-  const [view, setView] = useState<'form' | 'results' | 'templates'>('form');
+  const [currentExamId, setCurrentExamId] = useState<string | null>(null);
+  const [view, setView] = useState<'form' | 'results' | 'history' | 'templates'>('form');
+  const [savedExams, setSavedExams] = useState<SavedExam[]>([]);
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
+  const [historyFilter, setHistoryFilter] = useState<string | null>(null);
   const [showSampleMatrix, setShowSampleMatrix] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [showGuide, setShowGuide] = useState(false); // State for the guide modal
 
   useEffect(() => {
-    if (view === 'templates') {
+    if (view === 'history') {
+      setSavedExams(getSavedExams());
+    } else if (view === 'templates') {
       setSavedConfigs(getSavedConfigs());
     }
   }, [view]);
 
+  const handleViewHistory = (subject?: string) => {
+    setHistoryFilter(subject || null);
+    setView('history');
+  };
+
   const handleCreateExam = async (config: ExamConfig) => {
     setState({ isLoading: true, error: null, data: null });
     setCurrentConfigForResults(config);
+    setCurrentExamId(null);
     try {
       const result = await generateExamContent(config);
       setState({ isLoading: false, error: null, data: result });
@@ -66,6 +78,28 @@ const App: React.FC = () => {
     if (currentConfigForResults) {
       handleCreateExam(currentConfigForResults);
     }
+  };
+
+  const handleViewSavedExam = (exam: SavedExam) => {
+    setState({ isLoading: false, error: null, data: exam.data });
+    setCurrentConfigForResults(exam.config);
+    setCurrentExamId(exam.id);
+    setView('results');
+  };
+
+  const handleDeleteSavedExam = (id: string) => {
+    deleteExam(id);
+    const updatedExams = getSavedExams();
+    setSavedExams([...updatedExams]);
+    if (currentExamId === id) {
+      setView('history');
+      setCurrentExamId(null);
+    }
+  };
+
+  const handleClearAllExams = () => {
+    clearAllExams();
+    setSavedExams([]);
   };
 
   const handleSaveConfig = (name: string) => {
@@ -144,6 +178,7 @@ const App: React.FC = () => {
               isLoading={state.isLoading}
               config={formConfig}
               setConfig={setFormConfig} 
+              onViewHistory={handleViewHistory}
             />
           </div>
         )}
@@ -153,9 +188,26 @@ const App: React.FC = () => {
             <ResultDisplay 
               data={state.data} 
               config={currentConfigForResults} 
+              examId={currentExamId}
               onBack={reset} 
+              onSave={(id) => setCurrentExamId(id)}
+              onDelete={handleDeleteSavedExam}
               onRegenerate={handleRegenerate} 
               isRegenerating={state.isLoading} />
+          </div>
+        )}
+
+        {view === 'history' && (
+          <div className="animate-in fade-in duration-500">
+            <SavedExamsList 
+              exams={historyFilter ? savedExams.filter(e => e.config.subject === historyFilter) : savedExams} 
+              onView={handleViewSavedExam} 
+              onDelete={handleDeleteSavedExam} 
+              onClearAll={handleClearAllExams}
+              onBack={() => setView('form')}
+              filterSubject={historyFilter}
+              onClearFilter={() => setHistoryFilter(null)}
+            />
           </div>
         )}
 
@@ -186,6 +238,10 @@ const App: React.FC = () => {
           <div className="inline-flex items-center gap-6 bg-white/60 backdrop-blur-sm px-6 py-3 rounded-2xl border border-gray-100 shadow-sm">
               <button onClick={() => setView('form')} className={`flex items-center gap-2 font-bold text-xs transition-colors ${view === 'form' ? 'text-blue-700' : 'text-gray-400 hover:text-blue-600'}`}>
                 <PlusCircle size={16}/> TẠO MỚI
+              </button>
+              <div className="w-px h-4 bg-gray-200"></div>
+              <button onClick={() => setView('history')} className={`flex items-center gap-2 font-bold text-xs transition-colors ${view === 'history' ? 'text-blue-700' : 'text-gray-400 hover:text-blue-600'}`}>
+                <HistoryIcon size={16}/> LỊCH SỬ
               </button>
               <div className="w-px h-4 bg-gray-200"></div>
               <button onClick={() => setView('templates')} className={`flex items-center gap-2 font-bold text-xs transition-colors ${view === 'templates' ? 'text-blue-700' : 'text-gray-400 hover:text-blue-600'}`}>

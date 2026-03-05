@@ -3,7 +3,7 @@ import * as mammoth from 'mammoth';
 import { ExamConfig, ExamType, QuestionCounts, LevelDistribution, ScopeItem, QuestionFormat, InputMode, CurriculumChapter, CurriculumLesson } from '../types.ts';
 import { CURRICULUM_DATA } from '../data/curriculum.ts';
 import { DEFAULT_TEMPLATES, DefaultTemplate } from '../data/defaultTemplates.ts';
-import { FileText, CheckCircle, PieChart, Book, Plus, Trash2, Calculator, CalendarCheck, Save, RotateCcw, Upload, FileUp, AlertCircle, Sparkles, PlusCircle, LayoutGrid, ListChecks, Percent, ChevronDown, GripVertical, Share2, Lightbulb, Send, Compass, Scale, PencilRuler, Loader2, Layout, BookOpenCheck } from 'lucide-react';
+import { FileText, CheckCircle, PieChart, Book, Plus, Trash2, Calculator, CalendarCheck, Save, RotateCcw, Upload, FileUp, AlertCircle, Sparkles, PlusCircle, LayoutGrid, ListChecks, Percent, ChevronDown, GripVertical, Share2, Lightbulb, Send, Compass, Scale, PencilRuler, Loader2, Layout, BookOpenCheck, History as HistoryIcon } from 'lucide-react';
 
 interface Props {
   onSubmit: (config: ExamConfig) => void;
@@ -11,6 +11,7 @@ interface Props {
   isLoading: boolean;
   config: ExamConfig;
   setConfig: React.Dispatch<React.SetStateAction<ExamConfig>>;
+  onViewHistory?: (subject: string) => void;
 }
 
 const SUBJECTS = [
@@ -78,7 +79,7 @@ type UploadStatus = {
   message: string;
 };
 
-const ExamForm: React.FC<Props> = ({ onSubmit, onSaveConfig, isLoading, config, setConfig }) => {
+const ExamForm: React.FC<Props> = ({ onSubmit, onSaveConfig, isLoading, config, setConfig, onViewHistory }) => {
   const [totalPercent, setTotalPercent] = useState(100);
   const [totalPeriods, setTotalPeriods] = useState(0);
   const [isCustomSubject, setIsCustomSubject] = useState(false);
@@ -183,8 +184,8 @@ const ExamForm: React.FC<Props> = ({ onSubmit, onSaveConfig, isLoading, config, 
         newConfig.uploadedContent = undefined;
       }
 
-      if (field === 'subject' && value !== prev.subject) {
-        // Reset scopeItems to its initial state when subject changes
+      if ((field === 'subject' || field === 'grade') && value !== prev[field]) {
+        // Reset scopeItems to its initial state when subject or grade changes
         newConfig.scopeItems = [{ id: '1', chapter: '', name: '', periods: 0 }];
       }
 
@@ -204,7 +205,12 @@ const ExamForm: React.FC<Props> = ({ onSubmit, onSaveConfig, isLoading, config, 
       if (newBooks.length === 0) {
         return prev; // Prevent unselecting the last book
       }
-      return { ...prev, textbook: newBooks };
+      return { 
+        ...prev, 
+        textbook: newBooks,
+        // Reset scopeItems when textbook changes
+        scopeItems: [{ id: '1', chapter: '', name: '', periods: 0 }]
+      };
     });
   };
 
@@ -474,7 +480,18 @@ const ExamForm: React.FC<Props> = ({ onSubmit, onSaveConfig, isLoading, config, 
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="space-y-2">
-            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Môn học</label>
+            <div className="flex justify-between items-center">
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Môn học</label>
+              {config.subject && onViewHistory && (
+                <button 
+                  type="button"
+                  onClick={() => onViewHistory(config.subject)}
+                  className="text-[10px] font-black text-blue-600 hover:text-blue-800 flex items-center gap-1 uppercase tracking-wider transition-colors"
+                >
+                  <HistoryIcon size={12} /> Xem lịch sử môn này
+                </button>
+              )}
+            </div>
             {!isCustomSubject ? (
               <select className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none bg-gray-50/50 transition-all hover:bg-white font-bold text-sm appearance-none cursor-pointer"
                 value={config.subject} onChange={(e) => e.target.value === 'other' ? setIsCustomSubject(true) : handleChange('subject', e.target.value)}>
@@ -657,8 +674,29 @@ const ExamForm: React.FC<Props> = ({ onSubmit, onSaveConfig, isLoading, config, 
             <label className="text-sm font-black text-gray-700 uppercase tracking-widest flex items-center gap-2">
                 <Book size={18} className="text-blue-600"/> 2. PHẠM VI KIẾN THỨC CHI TIẾT
             </label>
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic">
-               * Kéo thả <GripVertical size={12} className="inline-block" /> để sắp xếp thứ tự
+            <div className="flex items-center gap-4">
+              {availableChapters.length > 0 && (
+                <div className="relative group/tooltip">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const newItems = availableChapters.map(ch => ({
+                        id: Math.random().toString(36).substr(2, 9),
+                        chapter: ch,
+                        name: '',
+                        periods: 0
+                      }));
+                      setConfig(prev => ({ ...prev, scopeItems: newItems }));
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-black uppercase border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                  >
+                    <Sparkles size={12} /> Chọn nhanh tất cả chương
+                  </button>
+                </div>
+              )}
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic">
+                 * Kéo thả <GripVertical size={12} className="inline-block" /> để sắp xếp thứ tự
+              </div>
             </div>
           </div>
           
